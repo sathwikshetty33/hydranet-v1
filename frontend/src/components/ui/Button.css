@@ -1,0 +1,63 @@
+.btn {
+  --btn-fg: var(--bone);
+  --btn-bg: transparent;
+  --btn-bd: var(--blood);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.9ch;
+  padding: 0.9rem 1.4rem;
+  font-family: var(--font-mono);
+  font-size: var(--type-mono);
+  letter-spacing: var(--tracking-mega);
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--btn-fg);
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-bd);
+  position: relative;
+  overflow: hidden;
+  transition: color 0.4s var(--ease-out);
+  isolation: isolate;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--blood);
+  transform: translateY(101%);
+  transition: transform 0.45s var(--ease-out);
+}
+
+.btn:hover::before {
+  transform: translateY(0);
+}
+
+.btn__arrow {
+  transition: transform 0.45s var(--ease-out);
+}
+
+.btn:hover .btn__arrow {
+  transform: translateX(4px);
+}
+
+.btn--solid {
+  --btn-fg: var(--ink);
+  --btn-bg: var(--blood);
+}
+.btn--solid::before {
+  background: var(--flare);
+}
+.btn--solid:hover {
+  color: var(--ink);
+}
+
+.btn--ghost:hover {
+  color: var(--ink);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}

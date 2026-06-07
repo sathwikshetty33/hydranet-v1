@@ -1,0 +1,30 @@
+.sec-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: clamp(2.5rem, 5vw, 4rem);
+}
+
+.sec-head__meta {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.sec-head__title {
+  font-size: var(--type-display);
+  max-width: 18ch;
+}
+
+.sec-head--right {
+  align-items: flex-end;
+  text-align: right;
+}
+.sec-head--right .sec-head__title {
+  text-align: right;
+}
+
+.sec-head--center {
+  align-items: center;
+  text-align: center;
+}

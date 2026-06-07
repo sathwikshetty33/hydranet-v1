@@ -1,0 +1,69 @@
+/*
+  HydraNet design tokens.
+  Aesthetic: editorial-technical brutalism. Cold War intelligence dossier
+  meets Bloomberg terminal. Dark, dense, oxidized. Red is the only chromatic
+  voice on a graphite/bone palette.
+*/
+
+:root {
+  /* ── Color: substrate ── */
+  --ink: #0a0908;          /* deepest black, page base */
+  --smoke: #131110;        /* primary surface */
+  --ash: #1d1916;          /* elevated surface, cards */
+  --rust: #3a2520;         /* border / hairline divider */
+  --rust-soft: #2a1f1c;    /* secondary border */
+
+  /* ── Color: ink (text) ── */
+  --bone: #ede5d8;         /* primary text */
+  --bone-soft: #c8bfb0;    /* secondary text */
+  --ash-text: #8a7e72;     /* muted text, metadata */
+  --dust: #5a5048;         /* hint text, disabled */
+
+  /* ── Color: blood (the only chromatic accent) ── */
+  --blood: #c13b2a;        /* primary accent, oxidized red */
+  --blood-deep: #8a2616;   /* hover / pressed */
+  --flare: #ff3814;        /* signal red, alerts only */
+  --ember: #ff8c42;        /* secondary warm accent */
+  --char: #1a0a06;         /* near-black-red, for shadows on red */
+
+  /* ── Color: status ── */
+  --live: #4ade80;         /* used sparingly for "online" */
+  --warn: #ffb547;
+  --crit: var(--flare);
+
+  /* ── Typography ── */
+  --font-display: 'Bebas Neue', 'Helvetica Neue Condensed', Impact, sans-serif;
+  --font-serif: 'Fraunces', 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace;
+
+  --type-mega: clamp(5rem, 16vw, 14rem);    /* hero wordmark */
+  --type-display: clamp(3rem, 8vw, 6rem);   /* section heads */
+  --type-h2: clamp(2rem, 4vw, 3.25rem);
+  --type-h3: 1.5rem;
+  --type-body: 1.0625rem;
+  --type-small: 0.9375rem;
+  --type-mono: 0.75rem;     /* labels, metadata */
+  --type-mono-sm: 0.6875rem;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.08em;
+  --tracking-mega: 0.18em;  /* for uppercase mono labels */
+
+  --leading-tight: 0.92;
+  --leading-snug: 1.15;
+  --leading-body: 1.55;
+
+  /* ── Space ── */
+  --gutter: clamp(1.25rem, 3.5vw, 3rem);
+  --section-y: clamp(5rem, 12vw, 10rem);
+
+  /* ── Lines ── */
+  --hairline: 1px solid var(--rust);
+  --hairline-soft: 1px solid var(--rust-soft);
+  --hairline-blood: 1px solid var(--blood);
+
+  /* ── Motion ── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}

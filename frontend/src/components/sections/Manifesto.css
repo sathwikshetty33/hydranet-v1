@@ -1,0 +1,44 @@
+.manifesto {
+  padding-block: var(--section-y);
+  max-width: 1400px;
+}
+
+.manifesto__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8ch;
+  color: var(--ash-text);
+  margin-bottom: 2.5rem;
+}
+
+.manifesto__statement {
+  font-size: clamp(2.5rem, 7vw, 6rem);
+  line-height: 0.98;
+  max-width: 16ch;
+}
+
+.manifesto__line--strike {
+  color: var(--bone);
+  text-decoration: line-through;
+  text-decoration-color: var(--flare);
+  text-decoration-thickness: 0.06em;
+}
+
+.manifesto__line--plain {
+  color: var(--bone);
+}
+
+.manifesto__line--mute {
+  color: var(--dust);
+}
+
+.manifesto__resolve {
+  margin-top: clamp(2.5rem, 5vw, 4rem);
+  margin-left: auto;
+  max-width: 46ch;
+  font-size: clamp(1.15rem, 1.8vw, 1.5rem);
+  line-height: 1.5;
+  color: var(--bone-soft);
+  border-left: 2px solid var(--blood);
+  padding-left: 1.6rem;
+}

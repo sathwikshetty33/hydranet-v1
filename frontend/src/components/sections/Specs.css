@@ -1,0 +1,124 @@
+.specs {
+  padding-block: var(--section-y);
+}
+
+.specs__modes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.2rem;
+  margin-bottom: clamp(3rem, 6vw, 5rem);
+}
+
+.mode {
+  border: 1px solid var(--rust);
+  padding: 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--smoke);
+  transition: border-color 0.4s var(--ease-out), transform 0.4s var(--ease-out);
+}
+
+.mode:hover {
+  border-color: var(--blood);
+  transform: translateY(-4px);
+}
+
+.mode__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.mode__name {
+  font-size: 2.4rem;
+  color: var(--blood);
+  line-height: 1;
+}
+
+.mode__cni {
+  color: var(--bone-soft);
+}
+
+.mode__detail {
+  color: var(--ash-text);
+  font-size: var(--type-small);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.mode__bars {
+  display: flex;
+  gap: 4px;
+}
+.mode__bars span {
+  height: 4px;
+  flex: 1;
+  background: var(--rust);
+}
+.mode__bars span.on {
+  background: var(--blood);
+}
+
+.specs__stack {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: clamp(2rem, 5vw, 5rem);
+  border-top: 1px solid var(--rust);
+  padding-top: clamp(2.5rem, 5vw, 4rem);
+}
+
+.specs__stack-note {
+  margin-top: 1.2rem;
+  font-size: var(--type-small);
+  max-width: 28ch;
+  line-height: 1.5;
+}
+
+.specs__stack-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.srow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-block: 1.3rem;
+  border-bottom: 1px solid var(--rust-soft);
+}
+
+.srow dt {
+  font-size: clamp(1.6rem, 2.4vw, 2.2rem);
+}
+
+.srow dd {
+  text-align: right;
+}
+
+.specs__cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.8rem;
+  text-align: center;
+  margin-top: clamp(4rem, 9vw, 8rem);
+}
+
+.specs__cta-title {
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  max-width: 16ch;
+}
+
+@media (max-width: 820px) {
+  .specs__modes {
+    grid-template-columns: 1fr;
+  }
+  .specs__stack {
+    grid-template-columns: 1fr;
+  }
+  .srow dt {
+    font-size: 1.6rem;
+  }
+}

@@ -1,0 +1,68 @@
+.caps {
+  padding-block: var(--section-y);
+}
+
+.caps__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--rust);
+  border: 1px solid var(--rust);
+}
+
+.cap {
+  position: relative;
+  background: var(--smoke);
+  padding: clamp(1.8rem, 3vw, 3rem);
+  min-height: 16rem;
+  display: flex;
+  flex-direction: column;
+  transition: background 0.4s var(--ease-out);
+  overflow: hidden;
+}
+
+.cap:hover {
+  background: var(--ash);
+}
+
+.cap__index {
+  position: absolute;
+  top: clamp(1.8rem, 3vw, 3rem);
+  right: clamp(1.8rem, 3vw, 3rem);
+}
+
+.cap__kicker {
+  color: var(--blood);
+  margin-bottom: 1.4rem;
+}
+
+.cap__title {
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  margin-bottom: 0.9rem;
+}
+
+.cap__text {
+  color: var(--bone-soft);
+  max-width: 40ch;
+  line-height: 1.5;
+}
+
+.cap__corner {
+  position: absolute;
+  bottom: -1px;
+  left: -1px;
+  width: 0;
+  height: 2px;
+  background: var(--blood);
+  transition: width 0.5s var(--ease-out);
+}
+
+.cap:hover .cap__corner {
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .caps__grid {
+    grid-template-columns: 1fr;
+  }
+}

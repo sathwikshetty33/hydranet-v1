@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"github.com/sathwikshetty33/hydranet/services/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -25,7 +26,9 @@ func NewDatabase(dbHost, dbUser, dbPassword, dbName, dbPort string) (*Database, 
 		return nil, fmt.Errorf("db connection failed: %w", err)
 	}
 
-	if err := conn.AutoMigrate(); err != nil {
+	if err := conn.AutoMigrate(	
+		&models.Agent{},
+		); err != nil {
 		return nil, fmt.Errorf("migration failed: %w", err)
 	}
 

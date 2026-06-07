@@ -28,6 +28,7 @@ func NewDatabase(dbHost, dbUser, dbPassword, dbName, dbPort string) (*Database, 
 
 	if err := conn.AutoMigrate(	
 		&models.Agent{},
+		&models.Incident{},
 		); err != nil {
 		return nil, fmt.Errorf("migration failed: %w", err)
 	}

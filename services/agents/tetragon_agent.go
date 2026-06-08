@@ -2,18 +2,17 @@ package agents
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"strings"
-	"time"
 
 	tetragon "github.com/cilium/tetragon/api/v1/tetragon"
+	hydranetv1 "github.com/sathwikshetty33/hydranet/services/proto/hydranet/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 type TetragonAgentConfig struct {
@@ -23,11 +22,11 @@ type TetragonAgentConfig struct {
 	//   "127.0.0.1:54321"                         (port-forwarded for dev)
 	TetragonAddr string
 
-	// CoreURL is the HydraNet core base URL, no trailing slash, no /api/v1.
-	//   "https://hydranet.example"  /  "http://localhost:8080"
-	CoreURL string
+	// CoreAddr is the gRPC target for the HydraNet core IncidentService.
+	//   "hydranet-core.hydranet.svc:50051"  /  "localhost:50051"
+	CoreAddr string
 
-	// AgentID identifies this agent to the core (agents.id PK as a string).
+	// AgentID identifies this agent to the core (agents.id PK).
 	AgentID string
 
 	// AuthToken is the raw bearer token; the core hashes and compares.
@@ -36,19 +35,24 @@ type TetragonAgentConfig struct {
 	// SuspiciousPatterns are substrings matched against the exec'd
 	// binary + arguments. Defaults to a sensible set if left empty.
 	SuspiciousPatterns []string
-
-	// HTTPClient is used for reporting. Defaults to a 10s-timeout client.
-	HTTPClient *http.Client
 }
 
 type TetragonAgent struct {
-	cfg    TetragonAgentConfig
-	logger *slog.Logger
+	cfg            TetragonAgentConfig
+	logger         *slog.Logger
+	coreConn       *grpc.ClientConn
+	incidentClient hydranetv1.IncidentServiceClient
 }
 
-func NewTetragonAgent(cfg TetragonAgentConfig, logger *slog.Logger) *TetragonAgent {
-	if cfg.HTTPClient == nil {
-		cfg.HTTPClient = &http.Client{Timeout: 10 * time.Second}
+func NewTetragonAgent(cfg TetragonAgentConfig, logger *slog.Logger) (*TetragonAgent, error) {
+	if cfg.TetragonAddr == "" {
+		return nil, errors.New("tetragon address required")
+	}
+	if cfg.CoreAddr == "" {
+		return nil, errors.New("core address required")
+	}
+	if cfg.AgentID == "" {
+		return nil, errors.New("agent id required")
 	}
 	if len(cfg.SuspiciousPatterns) == 0 {
 		cfg.SuspiciousPatterns = []string{
@@ -59,7 +63,29 @@ func NewTetragonAgent(cfg TetragonAgentConfig, logger *slog.Logger) *TetragonAge
 			"capsh",
 		}
 	}
-	return &TetragonAgent{cfg: cfg, logger: logger}
+
+	conn, err := grpc.NewClient(
+		cfg.CoreAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("dial core %s: %w", cfg.CoreAddr, err)
+	}
+
+	return &TetragonAgent{
+		cfg:            cfg,
+		logger:         logger,
+		coreConn:       conn,
+		incidentClient: hydranetv1.NewIncidentServiceClient(conn),
+	}, nil
+}
+
+// Close releases the gRPC connection to the core.
+func (a *TetragonAgent) Close() error {
+	if a.coreConn == nil {
+		return nil
+	}
+	return a.coreConn.Close()
 }
 
 // ConsumeEvents opens a long-lived gRPC stream to Tetragon and reports any
@@ -139,43 +165,28 @@ func (a *TetragonAgent) matchExec(resp *tetragon.GetEventsResponse) (IncidentDet
 	return IncidentDetails{}, false
 }
 
-// ReportIncident POSTs an incident to the core. Auth is a bearer token; the
-// agent id is part of the URL so the core knows who is reporting.
+// ReportIncident sends a single IncidentReport to the core's IncidentService.
+// Auth and identity travel as gRPC metadata so the wire payload stays focused
+// on the incident itself.
 func (a *TetragonAgent) ReportIncident(ctx context.Context, incident IncidentDetails) error {
-	if a.cfg.CoreURL == "" {
-		return fmt.Errorf("core url not configured")
-	}
-	if a.cfg.AgentID == "" {
-		return fmt.Errorf("agent id not configured")
-	}
+	md := metadata.Pairs(
+		"authorization", "Bearer "+a.cfg.AuthToken,
+		"x-agent-id", a.cfg.AgentID,
+	)
+	ctx = metadata.NewOutgoingContext(ctx, md)
 
-	payload, err := json.Marshal(incident)
+	ack, err := a.incidentClient.ReportIncident(ctx, &hydranetv1.IncidentReport{
+		PodName:     incident.PodName,
+		ServiceName: incident.ServiceName,
+		Message:     incident.Message,
+		Severity:    incident.Severity,
+	})
 	if err != nil {
-		return fmt.Errorf("marshal incident: %w", err)
+		return fmt.Errorf("report incident to core: %w", err)
 	}
-
-	url := fmt.Sprintf("%s/api/v1/agents/%s/incidents",
-		strings.TrimRight(a.cfg.CoreURL, "/"), a.cfg.AgentID)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, strings.NewReader(string(payload)))
-	if err != nil {
-		return fmt.Errorf("new request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if a.cfg.AuthToken != "" {
-		req.Header.Set("Authorization", "Bearer "+a.cfg.AuthToken)
-	}
-
-	res, err := a.cfg.HTTPClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("post incident: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode >= 400 {
-		body, _ := io.ReadAll(res.Body)
-		return fmt.Errorf("core rejected incident (%d): %s", res.StatusCode, strings.TrimSpace(string(body)))
-	}
-	a.logger.Debug("incident reported", "pod", incident.PodName, "status", res.StatusCode)
+	a.logger.Debug("incident reported",
+		"pod", incident.PodName,
+		"incident_id", ack.GetIncidentId())
 	return nil
 }
 

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package hydranet.v1;
+
+option go_package = "github.com/sathwikshetty33/hydranet/services/proto/hydranet/v1;hydranetv1";
+
+// IncidentService is the agent-to-core wire protocol. Agents identify
+// themselves via gRPC metadata:
+//   authorization: Bearer <token>
+//   x-agent-id:    <numeric agent id>
+service IncidentService {
+  // ReportIncident records a single observed incident.
+  rpc ReportIncident(IncidentReport) returns (IncidentAck);
+}
+
+message IncidentReport {
+  string pod_name = 1;
+  string service_name = 2;
+  string message = 3;
+  string severity = 4;
+}
+
+message IncidentAck {
+  uint64 incident_id = 1;
+}

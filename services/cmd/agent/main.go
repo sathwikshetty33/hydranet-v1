@@ -16,18 +16,24 @@ import (
 func main() {
 	logger := utils.NewLogger(slog.LevelInfo)
 
-	cfg, err := configFromEnv()
+	tetragonCfg, reporterCfg, err := configFromEnv()
 	if err != nil {
 		logger.Error("invalid agent config", "err", err)
 		os.Exit(1)
 	}
 
-	agent, err := agents.NewTetragonAgent(cfg, logger)
+	reporter, err := agents.NewCoreReporter(reporterCfg)
+	if err != nil {
+		logger.Error("reporter init failed", "err", err)
+		os.Exit(1)
+	}
+	defer reporter.Close()
+
+	agent, err := agents.NewTetragonAgent(tetragonCfg, reporter, logger)
 	if err != nil {
 		logger.Error("agent init failed", "err", err)
 		os.Exit(1)
 	}
-	defer agent.Close()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -35,20 +41,22 @@ func main() {
 	runWithBackoff(ctx, logger, agent.ConsumeEvents)
 }
 
-func configFromEnv() (agents.TetragonAgentConfig, error) {
-	cfg := agents.TetragonAgentConfig{
+func configFromEnv() (agents.TetragonAgentConfig, agents.CoreReporterConfig, error) {
+	tetragonCfg := agents.TetragonAgentConfig{
 		TetragonAddr: envOr("HYDRANET_TETRAGON_ADDR", "unix:///var/run/tetragon/tetragon.sock"),
-		CoreAddr:     envOr("HYDRANET_CORE_ADDR", "localhost:50051"),
-		AgentID:      os.Getenv("HYDRANET_AGENT_ID"),
-		AuthToken:    os.Getenv("HYDRANET_AGENT_TOKEN"),
 	}
-	if cfg.AgentID == "" {
-		return cfg, errors.New("HYDRANET_AGENT_ID is required")
+	reporterCfg := agents.CoreReporterConfig{
+		CoreAddr:  envOr("HYDRANET_CORE_ADDR", "localhost:50051"),
+		AgentID:   os.Getenv("HYDRANET_AGENT_ID"),
+		AuthToken: os.Getenv("HYDRANET_AGENT_TOKEN"),
 	}
-	if cfg.AuthToken == "" {
-		return cfg, errors.New("HYDRANET_AGENT_TOKEN is required")
+	if reporterCfg.AgentID == "" {
+		return tetragonCfg, reporterCfg, errors.New("HYDRANET_AGENT_ID is required")
 	}
-	return cfg, nil
+	if reporterCfg.AuthToken == "" {
+		return tetragonCfg, reporterCfg, errors.New("HYDRANET_AGENT_TOKEN is required")
+	}
+	return tetragonCfg, reporterCfg, nil
 }
 
 func envOr(k, def string) string {

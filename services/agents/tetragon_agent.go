@@ -9,10 +9,8 @@ import (
 	"strings"
 
 	tetragon "github.com/cilium/tetragon/api/v1/tetragon"
-	hydranetv1 "github.com/sathwikshetty33/hydranet/services/proto/hydranet/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 )
 
 type TetragonAgentConfig struct {
@@ -22,37 +20,26 @@ type TetragonAgentConfig struct {
 	//   "127.0.0.1:54321"                         (port-forwarded for dev)
 	TetragonAddr string
 
-	// CoreAddr is the gRPC target for the HydraNet core IncidentService.
-	//   "hydranet-core.hydranet.svc:50051"  /  "localhost:50051"
-	CoreAddr string
-
-	// AgentID identifies this agent to the core (agents.id PK).
-	AgentID string
-
-	// AuthToken is the raw bearer token; the core hashes and compares.
-	AuthToken string
-
 	// SuspiciousPatterns are substrings matched against the exec'd
 	// binary + arguments. Defaults to a sensible set if left empty.
 	SuspiciousPatterns []string
 }
 
+// TetragonAgent consumes Tetragon events and hands matches to a Reporter.
+// It owns no transport to the core — that lives on the injected Reporter,
+// shared with any other agent kind (Falco, eBPF, log tail, etc.).
 type TetragonAgent struct {
-	cfg            TetragonAgentConfig
-	logger         *slog.Logger
-	coreConn       *grpc.ClientConn
-	incidentClient hydranetv1.IncidentServiceClient
+	cfg      TetragonAgentConfig
+	reporter Reporter
+	logger   *slog.Logger
 }
 
-func NewTetragonAgent(cfg TetragonAgentConfig, logger *slog.Logger) (*TetragonAgent, error) {
+func NewTetragonAgent(cfg TetragonAgentConfig, reporter Reporter, logger *slog.Logger) (*TetragonAgent, error) {
 	if cfg.TetragonAddr == "" {
 		return nil, errors.New("tetragon address required")
 	}
-	if cfg.CoreAddr == "" {
-		return nil, errors.New("core address required")
-	}
-	if cfg.AgentID == "" {
-		return nil, errors.New("agent id required")
+	if reporter == nil {
+		return nil, errors.New("reporter required")
 	}
 	if len(cfg.SuspiciousPatterns) == 0 {
 		cfg.SuspiciousPatterns = []string{
@@ -63,34 +50,12 @@ func NewTetragonAgent(cfg TetragonAgentConfig, logger *slog.Logger) (*TetragonAg
 			"capsh",
 		}
 	}
-
-	conn, err := grpc.NewClient(
-		cfg.CoreAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("dial core %s: %w", cfg.CoreAddr, err)
-	}
-
-	return &TetragonAgent{
-		cfg:            cfg,
-		logger:         logger,
-		coreConn:       conn,
-		incidentClient: hydranetv1.NewIncidentServiceClient(conn),
-	}, nil
-}
-
-// Close releases the gRPC connection to the core.
-func (a *TetragonAgent) Close() error {
-	if a.coreConn == nil {
-		return nil
-	}
-	return a.coreConn.Close()
+	return &TetragonAgent{cfg: cfg, reporter: reporter, logger: logger}, nil
 }
 
 // ConsumeEvents opens a long-lived gRPC stream to Tetragon and reports any
-// matching events as incidents until the context is cancelled or the stream
-// terminates.
+// matching events through the Reporter until the context is cancelled or
+// the stream terminates.
 func (a *TetragonAgent) ConsumeEvents(ctx context.Context) error {
 	conn, err := grpc.NewClient(
 		a.cfg.TetragonAddr,
@@ -125,7 +90,7 @@ func (a *TetragonAgent) ConsumeEvents(ctx context.Context) error {
 		if !ok {
 			continue
 		}
-		if reportErr := a.ReportIncident(ctx, details); reportErr != nil {
+		if reportErr := a.reporter.Report(ctx, details); reportErr != nil {
 			// One bad report shouldn't terminate the stream.
 			a.logger.Error("report incident failed",
 				"err", reportErr,
@@ -163,31 +128,6 @@ func (a *TetragonAgent) matchExec(resp *tetragon.GetEventsResponse) (IncidentDet
 		}, true
 	}
 	return IncidentDetails{}, false
-}
-
-// ReportIncident sends a single IncidentReport to the core's IncidentService.
-// Auth and identity travel as gRPC metadata so the wire payload stays focused
-// on the incident itself.
-func (a *TetragonAgent) ReportIncident(ctx context.Context, incident IncidentDetails) error {
-	md := metadata.Pairs(
-		"authorization", "Bearer "+a.cfg.AuthToken,
-		"x-agent-id", a.cfg.AgentID,
-	)
-	ctx = metadata.NewOutgoingContext(ctx, md)
-
-	ack, err := a.incidentClient.ReportIncident(ctx, &hydranetv1.IncidentReport{
-		PodName:     incident.PodName,
-		ServiceName: incident.ServiceName,
-		Message:     incident.Message,
-		Severity:    incident.Severity,
-	})
-	if err != nil {
-		return fmt.Errorf("report incident to core: %w", err)
-	}
-	a.logger.Debug("incident reported",
-		"pod", incident.PodName,
-		"incident_id", ack.GetIncidentId())
-	return nil
 }
 
 // Compile-time assertion that TetragonAgent satisfies the Agent interface.

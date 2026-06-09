@@ -19,10 +19,20 @@ type HttpServer struct {
 }
 
 func NewHttpServer(db *database.Database, logger *slog.Logger) *HttpServer {
-	return &HttpServer{
+	s := &HttpServer{
 		Router: gin.Default(),
 		db:     db,
 		logger: logger,
+	}
+	s.registerRoutes()
+	return s
+}
+
+func (s *HttpServer) registerRoutes() {
+	v1 := s.Router.Group("/api/v1")
+	{
+		v1.POST("/agents", s.createAgentHandler)
+		v1.GET("/agents", s.listAgentsHandler)
 	}
 }
 

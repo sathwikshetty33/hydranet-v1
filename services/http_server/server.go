@@ -33,6 +33,7 @@ func (s *HttpServer) registerRoutes() {
 	{
 		v1.POST("/agents", s.createAgentHandler)
 		v1.GET("/agents", s.listAgentsHandler)
+		v1.GET("/incidents", s.listIncidentsHandler)
 	}
 }
 

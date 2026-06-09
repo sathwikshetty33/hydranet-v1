@@ -1,0 +1,131 @@
+.alist {
+  list-style: none;
+  border: 1px solid var(--rust);
+  border-bottom: 0;
+}
+
+.arow {
+  display: grid;
+  grid-template-columns: 3rem 1fr auto;
+  align-items: center;
+  gap: 1.4rem;
+  padding: 1.3rem 1.5rem;
+  border-bottom: 1px solid var(--rust);
+  background: var(--smoke);
+  transition: background 0.3s var(--ease-out);
+}
+
+.arow:hover {
+  background: var(--ash);
+}
+
+.arow__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.arow__name {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--bone);
+  word-break: break-all;
+}
+
+.arow__cluster {
+  letter-spacing: var(--tracking-mega);
+}
+
+.arow__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.arow__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7ch;
+  color: var(--bone-soft);
+}
+
+/* ── States ── */
+.alist__state {
+  border: 1px dashed var(--rust);
+  padding: clamp(2.5rem, 6vw, 4.5rem) 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.alist__state p {
+  max-width: 40ch;
+  font-size: var(--type-small);
+}
+
+.alist__state--err {
+  border-color: rgba(255, 56, 20, 0.35);
+}
+
+.alist__hint code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--bone-soft);
+  background: var(--ink);
+  padding: 0.1em 0.5em;
+  border: 1px solid var(--rust);
+}
+
+.alist__empty-glyph {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--rust);
+  background: var(--ink);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  position: relative;
+}
+
+.alist__empty-glyph::after {
+  content: '';
+  position: absolute;
+  inset: 40%;
+  background: var(--rust);
+  border-radius: 50%;
+}
+
+/* ── Skeleton ── */
+.alist__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid var(--rust);
+}
+
+@keyframes skel-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.skel-row {
+  height: 70px;
+  background: linear-gradient(90deg, var(--smoke), var(--ash), var(--smoke));
+  animation: skel-pulse 1.4s var(--ease-in-out) infinite;
+}
+
+@media (max-width: 640px) {
+  .arow {
+    grid-template-columns: 2rem 1fr;
+  }
+  .arow__meta {
+    grid-column: 2;
+    align-items: flex-start;
+    text-align: left;
+    margin-top: 0.4rem;
+  }
+}

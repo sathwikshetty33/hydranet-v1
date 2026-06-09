@@ -1,0 +1,44 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.field__label {
+  color: var(--bone-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4ch;
+}
+
+.field__req {
+  color: var(--blood);
+}
+
+.field__input {
+  background: var(--ink);
+  border: 1px solid var(--rust);
+  padding: 0.95rem 1.1rem;
+  color: var(--bone);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  transition: border-color 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+  width: 100%;
+}
+
+.field__input::placeholder {
+  color: var(--dust);
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--blood);
+  box-shadow: inset 0 0 0 1px var(--blood), 0 0 0 4px rgba(193, 59, 42, 0.12);
+}
+
+.field__hint {
+  font-size: var(--type-mono-sm);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}

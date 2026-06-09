@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hydranet-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hydranet
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: hydranet
+    ports:
+      - "5431:5432"
+    volumes:
+      - hydranet_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hydranet -d hydranet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  core:
+    build:
+      context: ./services
+      dockerfile: Dockerfile
+    container_name: hydranet-core
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # On the internal docker network the DB is reachable by service name
+      # on its native port, not the 5431 host mapping.
+      HYDRANET_DB_HOST: postgres
+      HYDRANET_DB_PORT: "5432"
+      HYDRANET_DB_USER: hydranet
+      HYDRANET_DB_PASSWORD: password
+      HYDRANET_DB_NAME: hydranet
+      HYDRANET_HTTP_ADDR: ":8080"
+      HYDRANET_GRPC_ADDR: ":50051"
+    ports:
+      - "8080:8080"     # HTTP API (dashboard, agent registration)
+      - "50051:50051"   # gRPC (agent → core incident stream)
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hydranet-frontend
+    restart: unless-stopped
+    depends_on:
+      - core
+    ports:
+      # http://localhost:3000 → nginx → static SPA + /api proxy to core
+      - "3000:80"
+
+volumes:
+  hydranet_pgdata:
+

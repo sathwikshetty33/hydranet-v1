@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/sathwikshetty33/hydranet/services/database"
 	grpcserver "github.com/sathwikshetty33/hydranet/services/grpc_server"
@@ -42,23 +43,20 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	addr := envOr("HYDRANET_GRPC_ADDR", ":50051")
-	
-	go func() {
-		if err := grpc_server.Serve(ctx, addr); err != nil {
-			logger.Error("grpc server failed", "err", err)
-			cancel()
-		}
-	}()
-
+	grpcAddr := envOr("HYDRANET_GRPC_ADDR", ":50051")
 	httpAddr := envOr("HYDRANET_HTTP_ADDR", ":8080")
-	go func() {
-		logger.Info("http server listening", "addr", httpAddr)
-		if err := http_server.Router.Run(httpAddr); err != nil {
-			logger.Error("http server failed", "err", err)
-			cancel()
-		}
-	}()
+
+	// errgroup gives both servers a shared cancellable context: if either
+	// returns an error, gctx is cancelled and the other server's Serve loop
+	// exits via its own ctx.Done branch (graceful shutdown).
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return grpc_server.Serve(gctx, grpcAddr) })
+	g.Go(func() error { return http_server.Serve(gctx, httpAddr) })
+
+	if err := g.Wait(); err != nil {
+		logger.Error("server exited", "err", err)
+		os.Exit(1)
+	}
 }
 
 func envOr(k, def string) string {

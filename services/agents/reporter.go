@@ -2,12 +2,16 @@ package agents
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
+	"strings"
 
 	hydranetv1 "github.com/sathwikshetty33/hydranet/services/proto/hydranet/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
@@ -33,7 +37,14 @@ type CoreReporter struct {
 
 type CoreReporterConfig struct {
 	// CoreAddr is the gRPC target of the HydraNet core IncidentService.
-	//   "hydranet-core.hydranet.svc:50051"  /  "localhost:50051"
+	// Scheme drives transport selection:
+	//   "https://host[:port]"  /  "grpcs://host[:port]"  → TLS, port defaults to 443
+	//   "http://host[:port]"   /  "grpc://host[:port]"   → plaintext, port defaults to 80
+	//   "host:port"            (no scheme)               → plaintext (backwards compat)
+	// Examples:
+	//   "https://hydranet.example.com:443"     (ingress / ngrok)
+	//   "host.minikube.internal:50051"          (in-cluster, plaintext)
+	//   "localhost:50051"                       (local dev)
 	CoreAddr string
 
 	// AgentID identifies this agent to the core.
@@ -50,12 +61,24 @@ func NewCoreReporter(cfg CoreReporterConfig) (*CoreReporter, error) {
 	if cfg.AgentID == "" {
 		return nil, errors.New("agent id required")
 	}
-	conn, err := grpc.NewClient(
-		cfg.CoreAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+
+	target, useTLS, err := resolveCoreTarget(cfg.CoreAddr)
 	if err != nil {
-		return nil, fmt.Errorf("dial core %s: %w", cfg.CoreAddr, err)
+		return nil, err
+	}
+
+	var transportCreds credentials.TransportCredentials
+	if useTLS {
+		// System root CAs — fine for public certs (Let's Encrypt, ngrok).
+		// For a private CA, plug in a RootCAs pool here.
+		transportCreds = credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12})
+	} else {
+		transportCreds = insecure.NewCredentials()
+	}
+
+	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(transportCreds))
+	if err != nil {
+		return nil, fmt.Errorf("dial core %s: %w", target, err)
 	}
 	return &CoreReporter{
 		conn:    conn,
@@ -63,6 +86,43 @@ func NewCoreReporter(cfg CoreReporterConfig) (*CoreReporter, error) {
 		agentID: cfg.AgentID,
 		token:   cfg.AuthToken,
 	}, nil
+}
+
+// resolveCoreTarget turns a user-facing address into a gRPC dial target plus
+// a TLS decision. gRPC's NewClient expects "host:port" (or its own scheme
+// like dns:///, unix:///), so https:// / http:// have to be stripped before
+// being passed through.
+func resolveCoreTarget(addr string) (target string, useTLS bool, err error) {
+	if !strings.Contains(addr, "://") {
+		// Bare "host:port" stays bare → plaintext.
+		return addr, false, nil
+	}
+
+	u, err := url.Parse(addr)
+	if err != nil {
+		return "", false, fmt.Errorf("parse core address: %w", err)
+	}
+
+	host := u.Hostname()
+	port := u.Port()
+	if host == "" {
+		return "", false, fmt.Errorf("core address %q missing host", addr)
+	}
+
+	switch strings.ToLower(u.Scheme) {
+	case "https", "grpcs":
+		if port == "" {
+			port = "443"
+		}
+		return host + ":" + port, true, nil
+	case "http", "grpc":
+		if port == "" {
+			port = "80"
+		}
+		return host + ":" + port, false, nil
+	default:
+		return "", false, fmt.Errorf("unsupported scheme %q in core address (use http, https, grpc, grpcs, or bare host:port)", u.Scheme)
+	}
 }
 
 func (r *CoreReporter) Close() error {

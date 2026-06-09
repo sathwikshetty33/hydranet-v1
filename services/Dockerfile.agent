@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1.7
+#
+# Builds the in-cluster HydraNet agent. Same Go module as the core; targets
+# ./cmd/agent. Ships as a distroless static binary so the resulting image is
+# tiny and has no shell to live off the land in.
+
+# ── Build stage ──
+FROM golang:1.26-alpine AS build
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+COPY . .
+
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/agent ./cmd/agent
+
+# ── Runtime stage ──
+FROM gcr.io/distroless/static-debian12:nonroot AS runtime
+
+WORKDIR /
+COPY --from=build /out/agent /agent
+
+USER nonroot:nonroot
+ENTRYPOINT ["/agent"]

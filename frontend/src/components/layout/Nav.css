@@ -71,6 +71,11 @@
   width: 100%;
 }
 
+.nav__actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
 .nav__cta {
   display: inline-flex;
   align-items: center;

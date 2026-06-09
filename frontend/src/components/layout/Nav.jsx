@@ -27,13 +27,21 @@ export default function Nav() {
           <a href="/#stack" className="nav__link t-mono">Stack</a>
         </nav>
 
-        <Link
-          to="/agents"
-          className={`nav__cta t-mono ${pathname === '/agents' ? 'is-active' : ''}`}
-        >
-          <span className="dot" />
-          Agents
-        </Link>
+        <div className="nav__actions">
+          <Link
+            to="/agents"
+            className={`nav__cta t-mono ${pathname === '/agents' ? 'is-active' : ''}`}
+          >
+            Agents
+          </Link>
+          <Link
+            to="/incidents"
+            className={`nav__cta t-mono ${pathname === '/incidents' ? 'is-active' : ''}`}
+          >
+            <span className="dot" />
+            Incidents
+          </Link>
+        </div>
       </div>
     </header>
   );

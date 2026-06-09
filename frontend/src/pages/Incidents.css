@@ -1,0 +1,216 @@
+.incidents {
+  padding-top: 72px;
+  min-height: 100svh;
+}
+
+.incidents__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-top: clamp(2.5rem, 5vw, 4rem);
+  padding-bottom: clamp(1.5rem, 3vw, 2.5rem);
+  flex-wrap: wrap;
+}
+
+.incidents__title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.incidents__title {
+  font-size: clamp(3.5rem, 9vw, 7rem);
+  line-height: 0.85;
+}
+
+.incidents__readout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 260px;
+}
+
+.incidents__readout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-block: 0.5rem;
+  border-bottom: 1px solid var(--rust-soft);
+}
+
+.incidents__count {
+  color: var(--blood);
+  font-size: 1rem;
+}
+
+.incidents__sync {
+  color: var(--bone-soft);
+}
+
+.incidents__body {
+  padding-block: clamp(2rem, 4vw, 3.5rem) var(--section-y);
+}
+
+.incidents__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.1rem;
+  margin-bottom: 1.2rem;
+  border-bottom: 1px solid var(--blood);
+}
+
+/* ── List ── */
+.ilist {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.irow {
+  border: 1px solid var(--rust-soft);
+  border-left: 2px solid var(--blood);
+  background: var(--smoke);
+  padding: 1.05rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  transition: background 0.3s var(--ease-out), border-color 0.3s var(--ease-out);
+}
+
+.irow:hover {
+  background: var(--ash);
+}
+
+.irow__top {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.irow__id {
+  color: var(--ember);
+  font-size: var(--type-mono);
+}
+
+.irow__sev {
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--rust);
+  color: var(--bone-soft);
+  letter-spacing: 0.05em;
+}
+
+.irow__sev.is-crit {
+  color: var(--flare);
+  border-color: rgba(255, 56, 20, 0.5);
+  background: rgba(255, 56, 20, 0.08);
+}
+.irow__sev.is-high {
+  color: var(--ember);
+  border-color: rgba(255, 140, 66, 0.5);
+}
+.irow__sev.is-warn {
+  color: var(--warn);
+  border-color: rgba(255, 181, 71, 0.45);
+}
+.irow__sev.is-low {
+  color: var(--ash-text);
+}
+
+.irow__stamp {
+  margin-left: auto;
+}
+
+.irow__msg {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  color: var(--bone);
+  line-height: 1.5;
+}
+
+.irow__meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.irow__chip {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--rust);
+  color: var(--bone-soft);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.irow__chip .muted {
+  margin-right: 0.45ch;
+}
+
+/* ── States ── */
+.ilist__state {
+  border: 1px dashed var(--rust);
+  padding: clamp(2.5rem, 6vw, 4.5rem) 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.ilist__state p {
+  max-width: 44ch;
+  font-size: var(--type-small);
+}
+
+.ilist__state--err {
+  border-color: rgba(255, 56, 20, 0.35);
+}
+
+.ilist__hint code {
+  font-family: var(--font-mono);
+  font-size: 0.8em;
+  color: var(--bone-soft);
+  background: var(--ink);
+  padding: 0.1em 0.5em;
+  border: 1px solid var(--rust);
+}
+
+.ilist__empty-glyph {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--rust);
+  background: var(--ink);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  position: relative;
+}
+.ilist__empty-glyph::after {
+  content: '';
+  position: absolute;
+  inset: 40%;
+  background: var(--rust);
+  border-radius: 50%;
+}
+
+/* ── Skeleton ── */
+.ilist__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ilist__skeleton .skel-row {
+  height: 84px;
+  border: 1px solid var(--rust-soft);
+  background: linear-gradient(90deg, var(--smoke), var(--ash), var(--smoke));
+  animation: skel-pulse 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes skel-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}

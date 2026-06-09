@@ -4,6 +4,7 @@ import Nav from './components/layout/Nav';
 import Footer from './components/layout/Footer';
 import Landing from './pages/Landing';
 import Agents from './pages/Agents';
+import Incidents from './pages/Incidents';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -21,6 +22,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/agents" element={<Agents />} />
+        <Route path="/incidents" element={<Incidents />} />
       </Routes>
       <Footer />
     </>

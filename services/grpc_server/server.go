@@ -6,10 +6,12 @@ import (
 	"log/slog"
 	"net"
 	"strconv"
+	"strings"
 
 	"github.com/sathwikshetty33/hydranet/services/database"
 	"github.com/sathwikshetty33/hydranet/services/models"
 	hydranetv1 "github.com/sathwikshetty33/hydranet/services/proto/hydranet/v1"
+	"github.com/sathwikshetty33/hydranet/services/utils"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -55,8 +57,11 @@ func (s *GrpcServer) Serve(ctx context.Context, addr string) error {
 	}
 }
 
+
+var errInvalidCreds = status.Error(codes.Unauthenticated, "invalid agent credentials")
+
 func (s *GrpcServer) ReportIncident(ctx context.Context, req *hydranetv1.IncidentReport) (*hydranetv1.IncidentAck, error) {
-	agentID, err := agentIDFromMetadata(ctx)
+	agentID, token, err := agentCredsFromMetadata(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +72,13 @@ func (s *GrpcServer) ReportIncident(ctx context.Context, req *hydranetv1.Inciden
 		return nil, status.Error(codes.Internal, "agent lookup failed")
 	}
 	if agent == nil {
-		return nil, status.Errorf(codes.Unauthenticated, "agent %d not registered", agentID)
+		s.logger.Warn("auth rejected: agent not registered", "agent_id", agentID)
+		return nil, errInvalidCreds
+	}
+
+	if !utils.VerifyToken(token, agent.AuthTokenHash) {
+		s.logger.Warn("auth rejected: token mismatch", "agent_id", agent.ID)
+		return nil, errInvalidCreds
 	}
 
 	incident := &models.Incident{
@@ -92,18 +103,33 @@ func (s *GrpcServer) ReportIncident(ctx context.Context, req *hydranetv1.Inciden
 	return &hydranetv1.IncidentAck{IncidentId: uint64(incident.ID)}, nil
 }
 
-func agentIDFromMetadata(ctx context.Context) (uint, error) {
+func agentCredsFromMetadata(ctx context.Context) (uint, string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return 0, status.Error(codes.Unauthenticated, "missing metadata")
+		return 0, "", errInvalidCreds
 	}
-	vals := md.Get("x-agent-id")
-	if len(vals) == 0 || vals[0] == "" {
-		return 0, status.Error(codes.Unauthenticated, "missing x-agent-id")
+
+	idVals := md.Get("x-agent-id")
+	if len(idVals) == 0 || idVals[0] == "" {
+		return 0, "", errInvalidCreds
 	}
-	id, err := strconv.ParseUint(vals[0], 10, 64)
+	id, err := strconv.ParseUint(idVals[0], 10, 64)
 	if err != nil {
-		return 0, status.Errorf(codes.Unauthenticated, "invalid x-agent-id: %v", err)
+		return 0, "", errInvalidCreds
 	}
-	return uint(id), nil
+
+	authVals := md.Get("authorization")
+	if len(authVals) == 0 {
+		return 0, "", errInvalidCreds
+	}
+	const prefix = "Bearer "
+	if !strings.HasPrefix(authVals[0], prefix) {
+		return 0, "", errInvalidCreds
+	}
+	token := strings.TrimPrefix(authVals[0], prefix)
+	if token == "" {
+		return 0, "", errInvalidCreds
+	}
+
+	return uint(id), token, nil
 }

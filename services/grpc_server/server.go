@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/sathwikshetty33/hydranet/services/database"
 	"github.com/sathwikshetty33/hydranet/services/models"
@@ -17,6 +18,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+)
+
+// Quarantine policy knobs. Deliberately constants for v1; promote to config
+// when there's a real need to tune per-deployment.
+const (
+	quarantineWindow    = 5 * time.Minute
+	quarantineThreshold = 3 // N high-or-critical incidents in window → quarantine
 )
 
 type GrpcServer struct {
@@ -93,14 +101,43 @@ func (s *GrpcServer) ReportIncident(ctx context.Context, req *hydranetv1.Inciden
 		return nil, status.Error(codes.Internal, "create incident failed")
 	}
 
+	quarantine := s.decideQuarantine(incident.PodName, incident.Severity)
+
 	s.logger.Info("incident recorded",
 		"incident_id", incident.ID,
 		"agent_id", agent.ID,
 		"pod", incident.PodName,
 		"service", incident.ServiceName,
 		"severity", incident.Severity,
+		"quarantine", quarantine,
 	)
-	return &hydranetv1.IncidentAck{IncidentId: uint64(incident.ID)}, nil
+	return &hydranetv1.IncidentAck{
+		IncidentId: uint64(incident.ID),
+		Quarantine: quarantine,
+	}, nil
+}
+
+// decideQuarantine is the core's policy brain for "should the reporting
+// agent isolate this pod?". v1 ruleset:
+//
+//   - A "critical" severity event is sufficient on its own (escape patterns,
+//     credential reads — the low-FP set).
+//   - Otherwise, accumulate: ≥quarantineThreshold high-or-critical events
+//     in the last quarantineWindow trips quarantine.
+//
+// Called AFTER the current incident is persisted so the count includes it.
+// Fail-closed: DB errors return false (don't isolate) and are logged.
+func (s *GrpcServer) decideQuarantine(podName, severity string) bool {
+	if severity == "critical" {
+		return true
+	}
+	count, err := s.db.CountRecentHighSeverityIncidents(podName, quarantineWindow)
+	if err != nil {
+		s.logger.Error("quarantine history query failed",
+			"err", err, "pod", podName)
+		return false
+	}
+	return count >= quarantineThreshold
 }
 
 func agentCredsFromMetadata(ctx context.Context) (uint, string, error) {

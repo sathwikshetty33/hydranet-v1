@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"strings"
 
 	tetragon "github.com/cilium/tetragon/api/v1/tetragon"
 	"google.golang.org/grpc"
@@ -20,9 +19,9 @@ type TetragonAgentConfig struct {
 	//   "127.0.0.1:54321"                         (port-forwarded for dev)
 	TetragonAddr string
 
-	// SuspiciousPatterns are substrings matched against the exec'd
-	// binary + arguments. Defaults to a sensible set if left empty.
-	SuspiciousPatterns []string
+	// Patterns is the rule table evaluated against every ProcessExec event.
+	// Defaults to DefaultPatterns (defined in agent.go) if left empty.
+	Patterns []Pattern
 }
 
 // TetragonAgent consumes Tetragon events and hands matches to a Reporter.
@@ -41,14 +40,8 @@ func NewTetragonAgent(cfg TetragonAgentConfig, reporter Reporter, logger *slog.L
 	if reporter == nil {
 		return nil, errors.New("reporter required")
 	}
-	if len(cfg.SuspiciousPatterns) == 0 {
-		cfg.SuspiciousPatterns = []string{
-			"nc", "ncat",
-			"wget", "curl",
-			"/etc/shadow", "/etc/passwd",
-			"/proc/self/status",
-			"capsh",
-		}
+	if len(cfg.Patterns) == 0 {
+		cfg.Patterns = DefaultPatterns
 	}
 	return &TetragonAgent{cfg: cfg, reporter: reporter, logger: logger}, nil
 }
@@ -100,10 +93,11 @@ func (a *TetragonAgent) ConsumeEvents(ctx context.Context) error {
 	}
 }
 
-// matchExec inspects a ProcessExec event and returns IncidentDetails when
-// the binary or its arguments contain any configured suspicious pattern.
-// Events without an associated pod are skipped — the agent only cares
-// about activity inside workloads.
+// matchExec inspects a ProcessExec event and returns IncidentDetails for the
+// FIRST pattern that fires. Patterns are evaluated in their slice order, so
+// put highest-severity, lowest-false-positive rules first.
+// Events without an associated pod are skipped — the agent only cares about
+// activity inside workloads.
 func (a *TetragonAgent) matchExec(resp *tetragon.GetEventsResponse) (IncidentDetails, bool) {
 	exec := resp.GetProcessExec()
 	if exec == nil || exec.Process == nil || exec.Process.Pod == nil {
@@ -111,20 +105,21 @@ func (a *TetragonAgent) matchExec(resp *tetragon.GetEventsResponse) (IncidentDet
 	}
 	proc := exec.Process
 
-	haystack := proc.Binary + " " + proc.Arguments
-	for _, needle := range a.cfg.SuspiciousPatterns {
-		if needle == "" || !strings.Contains(haystack, needle) {
+	for _, p := range a.cfg.Patterns {
+		if !p.Matches(proc.Binary, proc.Arguments) {
 			continue
 		}
 		workload := proc.Pod.Workload
 		if workload == "" {
 			workload = proc.Pod.Name
 		}
+		// Technique is tucked into the message as a parseable prefix until
+		// the IncidentReport proto gains a dedicated field.
 		return IncidentDetails{
 			PodName:     proc.Pod.Name,
 			ServiceName: workload,
-			Message:     fmt.Sprintf("Tetragon: %s %s", proc.Binary, proc.Arguments),
-			Severity:    "high",
+			Message:     fmt.Sprintf("[%s] %s %s", p.Technique, proc.Binary, proc.Arguments),
+			Severity:    p.Severity,
 		}, true
 	}
 	return IncidentDetails{}, false

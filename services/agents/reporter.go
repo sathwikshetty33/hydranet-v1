@@ -21,8 +21,22 @@ import (
 // stdout, an in-memory queue for tests — so agents stay decoupled from how
 // "the core" is reached.
 type Reporter interface {
-	Report(ctx context.Context, incident IncidentDetails) error
+	// Report forwards an incident and returns the core's decision back so
+	// the caller can react (e.g., quarantine the pod). Returns nil ack on
+	// transport error.
+	Report(ctx context.Context, incident IncidentDetails) (*ReportAck, error)
 	io.Closer
+}
+
+// ReportAck is the transport-agnostic shape of the core's response to a
+// Report() call. The gRPC impl maps IncidentAck → ReportAck; future
+// transports can do the same translation.
+type ReportAck struct {
+	IncidentID uint64
+	// Quarantine is the core's signal to the agent that this pod should
+	// be isolated via NetworkPolicy. The agent's Isolator (if configured)
+	// is the actuator.
+	Quarantine bool
 }
 
 // CoreReporter is the production Reporter: it speaks the IncidentService
@@ -132,22 +146,26 @@ func (r *CoreReporter) Close() error {
 	return r.conn.Close()
 }
 
-func (r *CoreReporter) Report(ctx context.Context, incident IncidentDetails) error {
+func (r *CoreReporter) Report(ctx context.Context, incident IncidentDetails) (*ReportAck, error) {
 	md := metadata.Pairs(
 		"authorization", "Bearer "+r.token,
 		"x-agent-id", r.agentID,
 	)
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
-	if _, err := r.client.ReportIncident(ctx, &hydranetv1.IncidentReport{
+	ack, err := r.client.ReportIncident(ctx, &hydranetv1.IncidentReport{
 		PodName:     incident.PodName,
 		ServiceName: incident.ServiceName,
 		Message:     incident.Message,
 		Severity:    incident.Severity,
-	}); err != nil {
-		return fmt.Errorf("report incident to core: %w", err)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("report incident to core: %w", err)
 	}
-	return nil
+	return &ReportAck{
+		IncidentID: ack.GetIncidentId(),
+		Quarantine: ack.GetQuarantine(),
+	}, nil
 }
 
 // Compile-time assertion that CoreReporter satisfies the Reporter interface.

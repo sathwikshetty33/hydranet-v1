@@ -83,12 +83,21 @@ func (a *TetragonAgent) ConsumeEvents(ctx context.Context) error {
 		if !ok {
 			continue
 		}
-		if reportErr := a.reporter.Report(ctx, details); reportErr != nil {
+		// TODO(next-commit): act on ack.Quarantine via an injected Isolator.
+		// For now we just observe the decision in logs.
+		ack, reportErr := a.reporter.Report(ctx, details)
+		if reportErr != nil {
 			// One bad report shouldn't terminate the stream.
 			a.logger.Error("report incident failed",
 				"err", reportErr,
 				"pod", details.PodName,
 				"msg", details.Message)
+			continue
+		}
+		if ack != nil && ack.Quarantine {
+			a.logger.Warn("core requested quarantine (actuator not yet wired)",
+				"pod", details.PodName,
+				"incident_id", ack.IncidentID)
 		}
 	}
 }

@@ -10,6 +10,23 @@ func (db *Database) CreateIncident(incident *models.Incident) error {
 	return db.Connection.Create(incident).Error
 }
 
+// CountRecentHighSeverityIncidents returns how many incidents at severity
+// "high" or "critical" have been recorded for podName within the last
+// `window`. Used by the quarantine decision: a pod accumulating high-tier
+// activity in a short window is treated as compromised even if no single
+// event was critical on its own.
+func (db *Database) CountRecentHighSeverityIncidents(podName string, window time.Duration) (int64, error) {
+	var count int64
+	err := db.Connection.
+		Table("incidents").
+		Where("pod_name = ?", podName).
+		Where("severity IN ?", []string{"high", "critical"}).
+		Where("created_at > ?", time.Now().Add(-window)).
+		Where("deleted_at IS NULL").
+		Count(&count).Error
+	return count, err
+}
+
 
 type IncidentListItem struct {
 	ID          uint      `json:"id"`

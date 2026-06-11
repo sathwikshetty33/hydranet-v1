@@ -90,8 +90,12 @@ func (x *IncidentReport) GetSeverity() string {
 }
 
 type IncidentAck struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	IncidentId    uint64                 `protobuf:"varint,1,opt,name=incident_id,json=incidentId,proto3" json:"incident_id,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	IncidentId uint64                 `protobuf:"varint,1,opt,name=incident_id,json=incidentId,proto3" json:"incident_id,omitempty"`
+	// quarantine instructs the agent to apply a NetworkPolicy-based
+	// isolation on the reported pod. The decision is made by the core
+	// based on this incident's severity plus the pod's recent history.
+	Quarantine    bool `protobuf:"varint,2,opt,name=quarantine,proto3" json:"quarantine,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -133,6 +137,13 @@ func (x *IncidentAck) GetIncidentId() uint64 {
 	return 0
 }
 
+func (x *IncidentAck) GetQuarantine() bool {
+	if x != nil {
+		return x.Quarantine
+	}
+	return false
+}
+
 var File_hydranet_v1_incident_proto protoreflect.FileDescriptor
 
 const file_hydranet_v1_incident_proto_rawDesc = "" +
@@ -142,10 +153,13 @@ const file_hydranet_v1_incident_proto_rawDesc = "" +
 	"\bpod_name\x18\x01 \x01(\tR\apodName\x12!\n" +
 	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1a\n" +
-	"\bseverity\x18\x04 \x01(\tR\bseverity\".\n" +
+	"\bseverity\x18\x04 \x01(\tR\bseverity\"N\n" +
 	"\vIncidentAck\x12\x1f\n" +
 	"\vincident_id\x18\x01 \x01(\x04R\n" +
-	"incidentId2Z\n" +
+	"incidentId\x12\x1e\n" +
+	"\n" +
+	"quarantine\x18\x02 \x01(\bR\n" +
+	"quarantine2Z\n" +
 	"\x0fIncidentService\x12G\n" +
 	"\x0eReportIncident\x12\x1b.hydranet.v1.IncidentReport\x1a\x18.hydranet.v1.IncidentAckBKZIgithub.com/sathwikshetty33/hydranet/services/proto/hydranet/v1;hydranetv1b\x06proto3"
 

@@ -22,4 +22,8 @@ message IncidentReport {
 
 message IncidentAck {
   uint64 incident_id = 1;
+  // quarantine instructs the agent to apply a NetworkPolicy-based
+  // isolation on the reported pod. The decision is made by the core
+  // based on this incident's severity plus the pod's recent history.
+  bool quarantine = 2;
 }

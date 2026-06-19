@@ -11,14 +11,17 @@ func (db *Database) CreateIncident(incident *models.Incident) error {
 }
 
 // CountRecentHighSeverityIncidents returns how many incidents at severity
-// "high" or "critical" have been recorded for podName within the last
-// `window`. Used by the quarantine decision: a pod accumulating high-tier
-// activity in a short window is treated as compromised even if no single
-// event was critical on its own.
-func (db *Database) CountRecentHighSeverityIncidents(podName string, window time.Duration) (int64, error) {
+// "high" or "critical" have been recorded for a pod within the last `window`.
+// Scoped to (namespace, pod_name) because a pod name alone is not unique —
+// "api" in dev and "api" in prod are different workloads and must not share
+// a quarantine history. Used by the quarantine decision: a pod accumulating
+// high-tier activity in a short window is treated as compromised even if no
+// single event was critical on its own.
+func (db *Database) CountRecentHighSeverityIncidents(namespace, podName string, window time.Duration) (int64, error) {
 	var count int64
 	err := db.Connection.
 		Table("incidents").
+		Where("namespace = ?", namespace).
 		Where("pod_name = ?", podName).
 		Where("severity IN ?", []string{"high", "critical"}).
 		Where("created_at > ?", time.Now().Add(-window)).
@@ -33,6 +36,7 @@ type IncidentListItem struct {
 	AgentID     uint      `json:"agent_id"`
 	AgentName   string    `json:"agent_name"`
 	ClusterName string    `json:"cluster_name"`
+	Namespace   string    `json:"namespace"`
 	PodName     string    `json:"pod_name"`
 	ServiceName string    `json:"service_name"`
 	Message     string    `json:"message"`
@@ -49,6 +53,7 @@ func (db *Database) ListIncidents() ([]IncidentListItem, error) {
 		        incidents.agent_id,
 		        agents.name AS agent_name,
 		        agents.cluster_name,
+		        incidents.namespace,
 		        incidents.pod_name,
 		        incidents.service_name,
 		        incidents.message,

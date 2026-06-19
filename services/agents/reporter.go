@@ -154,6 +154,7 @@ func (r *CoreReporter) Report(ctx context.Context, incident IncidentDetails) (*R
 	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	ack, err := r.client.ReportIncident(ctx, &hydranetv1.IncidentReport{
+		Namespace:   incident.Namespace,
 		PodName:     incident.PodName,
 		ServiceName: incident.ServiceName,
 		Message:     incident.Message,

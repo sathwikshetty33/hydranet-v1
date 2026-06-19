@@ -125,6 +125,7 @@ func (a *TetragonAgent) matchExec(resp *tetragon.GetEventsResponse) (IncidentDet
 		// Technique is tucked into the message as a parseable prefix until
 		// the IncidentReport proto gains a dedicated field.
 		return IncidentDetails{
+			Namespace:   proc.Pod.Namespace,
 			PodName:     proc.Pod.Name,
 			ServiceName: workload,
 			Message:     fmt.Sprintf("[%s] %s %s", p.Technique, proc.Binary, proc.Arguments),

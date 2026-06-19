@@ -27,6 +27,7 @@ type IncidentReport struct {
 	ServiceName   string                 `protobuf:"bytes,2,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
 	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
 	Severity      string                 `protobuf:"bytes,4,opt,name=severity,proto3" json:"severity,omitempty"`
+	Namespace     string                 `protobuf:"bytes,5,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -85,6 +86,13 @@ func (x *IncidentReport) GetMessage() string {
 func (x *IncidentReport) GetSeverity() string {
 	if x != nil {
 		return x.Severity
+	}
+	return ""
+}
+
+func (x *IncidentReport) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
 	}
 	return ""
 }
@@ -148,12 +156,13 @@ var File_hydranet_v1_incident_proto protoreflect.FileDescriptor
 
 const file_hydranet_v1_incident_proto_rawDesc = "" +
 	"\n" +
-	"\x1ahydranet/v1/incident.proto\x12\vhydranet.v1\"\x84\x01\n" +
+	"\x1ahydranet/v1/incident.proto\x12\vhydranet.v1\"\xa2\x01\n" +
 	"\x0eIncidentReport\x12\x19\n" +
 	"\bpod_name\x18\x01 \x01(\tR\apodName\x12!\n" +
 	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1a\n" +
-	"\bseverity\x18\x04 \x01(\tR\bseverity\"N\n" +
+	"\bseverity\x18\x04 \x01(\tR\bseverity\x12\x1c\n" +
+	"\tnamespace\x18\x05 \x01(\tR\tnamespace\"N\n" +
 	"\vIncidentAck\x12\x1f\n" +
 	"\vincident_id\x18\x01 \x01(\x04R\n" +
 	"incidentId\x12\x1e\n" +

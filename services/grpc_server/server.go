@@ -91,6 +91,7 @@ func (s *GrpcServer) ReportIncident(ctx context.Context, req *hydranetv1.Inciden
 
 	incident := &models.Incident{
 		AgentId:     agent.ID,
+		Namespace:   req.GetNamespace(),
 		PodName:     req.GetPodName(),
 		ServiceName: req.GetServiceName(),
 		Message:     req.GetMessage(),
@@ -101,7 +102,7 @@ func (s *GrpcServer) ReportIncident(ctx context.Context, req *hydranetv1.Inciden
 		return nil, status.Error(codes.Internal, "create incident failed")
 	}
 
-	quarantine := s.decideQuarantine(incident.PodName, incident.Severity)
+	quarantine := s.decideQuarantine(incident.Namespace, incident.PodName, incident.Severity)
 
 	s.logger.Info("incident recorded",
 		"incident_id", incident.ID,
@@ -127,14 +128,14 @@ func (s *GrpcServer) ReportIncident(ctx context.Context, req *hydranetv1.Inciden
 //
 // Called AFTER the current incident is persisted so the count includes it.
 // Fail-closed: DB errors return false (don't isolate) and are logged.
-func (s *GrpcServer) decideQuarantine(podName, severity string) bool {
+func (s *GrpcServer) decideQuarantine(namespace, podName, severity string) bool {
 	if severity == "critical" {
 		return true
 	}
-	count, err := s.db.CountRecentHighSeverityIncidents(podName, quarantineWindow)
+	count, err := s.db.CountRecentHighSeverityIncidents(namespace, podName, quarantineWindow)
 	if err != nil {
 		s.logger.Error("quarantine history query failed",
-			"err", err, "pod", podName)
+			"err", err, "namespace", namespace, "pod", podName)
 		return false
 	}
 	return count >= quarantineThreshold

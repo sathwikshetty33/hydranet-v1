@@ -179,6 +179,9 @@ export default function Incidents() {
                       {inc.cluster_name || '—'}
                     </span>
                     <span className="irow__chip">
+                      <span className="muted">NS</span> {inc.namespace || '—'}
+                    </span>
+                    <span className="irow__chip">
                       <span className="muted">POD</span> {inc.pod_name || '—'}
                     </span>
                     <span className="irow__chip">

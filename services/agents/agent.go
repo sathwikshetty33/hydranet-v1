@@ -10,6 +10,7 @@ import (
 // reporter consumes. It is deliberately transport-agnostic — proto, JSON,
 // stdout, in-memory: all converge on this struct.
 type IncidentDetails struct {
+	Namespace   string
 	PodName     string
 	ServiceName string
 	Message     string
